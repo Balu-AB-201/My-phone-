@@ -1,6 +1,7 @@
 package com.balu.abdialer.ui
 
 import android.Manifest
+import android.provider.CallLog
 import android.telecom.Call
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Backspace
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Contacts
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,10 +52,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private data class DialKey(val number: String, val letters: String)
+
+private data class RecentCall(
+    val number: String,
+    val type: Int,
+    val timestamp: Long
+)
 
 private val keys = listOf(
     DialKey("1", ""), DialKey("2", "ABC"), DialKey("3", "DEF"),
@@ -67,6 +76,8 @@ fun DialerScreen(modifier: Modifier = Modifier) {
     var number by rememberSaveable { mutableStateOf("") }
     var favoriteNumber by rememberSaveable { mutableStateOf("") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
+    var showRecents by rememberSaveable { mutableStateOf(false) }
+    var recentCalls by remember { mutableStateOf<List<RecentCall>>(emptyList()) }
     val context = LocalContext.current
     val telecomCall = ActiveCallStore.uiState.collectAsState().value
     val telephonyManager = remember {
@@ -109,6 +120,28 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 @Suppress("DEPRECATION")
                 telephonyManager.listen(listener, PhoneStateListener.LISTEN_NONE)
             }
+        }
+    }
+
+    val recentCallPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            recentCalls = loadRecentCalls(context)
+            showRecents = true
+        }
+    }
+
+    fun openRecents() {
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_CALL_LOG
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            recentCalls = loadRecentCalls(context)
+            showRecents = true
+        } else {
+            recentCallPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
         }
     }
 
@@ -206,7 +239,11 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                     fontSize = 25.sp,
                     fontWeight = FontWeight.SemiBold
                 )
-                IconButton(onClick = ::openContacts) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = ::openRecents) {
+                        Icon(Icons.Rounded.History, "Recent calls", tint = Color.White)
+                    }
+                    IconButton(onClick = ::openContacts) {
                     Icon(
                         imageVector = Icons.Rounded.Contacts,
                         contentDescription = "Contacts",
@@ -216,6 +253,18 @@ fun DialerScreen(modifier: Modifier = Modifier) {
             }
 
             Spacer(Modifier.size(96.dp))
+
+            if (showRecents) {
+                RecentCallsPanel(
+                    calls = recentCalls,
+                    onSelect = {
+                        number = it.number
+                        showRecents = false
+                    },
+                    onClose = { showRecents = false }
+                )
+                Spacer(Modifier.size(16.dp))
+            }
 
             Text(
                 text = number.ifEmpty { " " },
@@ -333,6 +382,111 @@ private fun DialKeyButton(
                     fontSize = 9.sp,
                     letterSpacing = 1.5.sp
                 )
+            }
+        }
+    }
+}
+
+private fun loadRecentCalls(context: android.content.Context): List<RecentCall> {
+    val result = mutableListOf<RecentCall>()
+    runCatching {
+        context.contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE),
+            null,
+            null,
+            CallLog.Calls.DATE + " DESC"
+        )?.use { cursor ->
+            val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
+            val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
+            val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
+            while (cursor.moveToNext() && result.size < 8) {
+                val number = cursor.getString(numberIndex).orEmpty()
+                if (number.isNotBlank()) {
+                    result += RecentCall(number, cursor.getInt(typeIndex), cursor.getLong(dateIndex))
+                }
+            }
+        }
+    }
+    return result
+}
+
+@Composable
+private fun RecentCallsPanel(
+    calls: List<RecentCall>,
+    onSelect: (RecentCall) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .liquidGlass(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                tint = Color.White.copy(alpha = 0.10f)
+            )
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Recent calls", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Close",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 13.sp,
+                modifier = Modifier.clickable(onClick = onClose)
+            )
+        }
+
+        Spacer(Modifier.size(10.dp))
+
+        if (calls.isEmpty()) {
+            Text(
+                "No recent calls",
+                color = Color.White.copy(alpha = 0.62f),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = 18.dp)
+            )
+        } else {
+            calls.forEach { call ->
+                val label = when (call.type) {
+                    CallLog.Calls.MISSED_TYPE -> "Missed"
+                    CallLog.Calls.INCOMING_TYPE -> "Incoming"
+                    CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
+                    else -> "Call"
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(call) }
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            call.number,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            label,
+                            color = if (call.type == CallLog.Calls.MISSED_TYPE)
+                                Color(0xFFFF8A8A)
+                            else Color.White.copy(alpha = 0.58f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Icon(
+                        Icons.Rounded.Call,
+                        contentDescription = "Call",
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }
