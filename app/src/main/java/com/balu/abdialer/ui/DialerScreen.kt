@@ -76,7 +76,8 @@ private val keys = listOf(
 @Composable
 fun DialerScreen(modifier: Modifier = Modifier) {
     var number by rememberSaveable { mutableStateOf("") }
-    var favoriteNumber by rememberSaveable { mutableStateOf("") }
+    val preferences = remember { context.getSharedPreferences("ab_dialer", android.content.Context.MODE_PRIVATE) }
+    var favoriteNumber by rememberSaveable { mutableStateOf(preferences.getString("favorite_number", "") ?: "") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
     var showRecents by rememberSaveable { mutableStateOf(false) }
     var recentCalls by remember { mutableStateOf<List<RecentCall>>(emptyList()) }
@@ -306,7 +307,13 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { if (number.isNotBlank()) favoriteNumber = number },
+                    onClick = {
+                        if (number.isNotBlank()) {
+                            val next = if (favoriteNumber == number) "" else number
+                            favoriteNumber = next
+                            preferences.edit().putString("favorite_number", next).apply()
+                        }
+                    },
                     modifier = Modifier.size(52.dp)
                 ) {
                     Icon(
