@@ -60,6 +60,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
     var favoriteNumber by rememberSaveable { mutableStateOf("") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+
     val callLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -93,6 +94,16 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 data = Uri.parse("content://contacts/people/")
             })
         }
+    }
+
+    activeCallNumber?.let { callNumber ->
+        InCallScreen(
+            number = callNumber,
+            onEndCall = {
+                activeCallNumber = null
+            }
+        )
+        return
     }
 
     Box(
@@ -197,11 +208,11 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
                         )
                         .background(Color(0xFF35D07F).copy(alpha = 0.72f))
-                    .clickable(
-                        indication = null,
-                        interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
-                        onClick = ::placeCall
-                    ),
+                        .clickable(
+                            indication = null,
+                            interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                            onClick = ::placeCall
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
