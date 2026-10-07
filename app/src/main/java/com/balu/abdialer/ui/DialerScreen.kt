@@ -327,10 +327,17 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                     contacts = contacts,
                     searchQuery = contactSearch,
                     onSearchQueryChange = { contactSearch = it },
+                    favoriteNumber = favoriteNumber,
+                    onToggleFavorite = { contact ->
+                        val next = if (favoriteNumber == contact.number) "" else contact.number
+                        favoriteNumber = next
+                        preferences.edit().putString("favorite_number", next).apply()
+                    },
                     onSelect = {
                         number = it.number
                         showContacts = false
                     },
+                    onCall = { callRecentNumber(it.number) },
                     onClose = { showContacts = false }
                 )
                 Spacer(Modifier.size(16.dp))
@@ -838,7 +845,10 @@ private fun ContactsPanel(
     contacts: List<ContactEntry>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
+    favoriteNumber: String,
+    onToggleFavorite: (ContactEntry) -> Unit,
     onSelect: (ContactEntry) -> Unit,
+    onCall: (ContactEntry) -> Unit,
     onClose: () -> Unit
 ) {
     Column(
@@ -944,6 +954,28 @@ private fun ContactsPanel(
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        IconButton(
+                            onClick = { onToggleFavorite(contact) },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Star,
+                                contentDescription = if (favoriteNumber == contact.number) "Remove favorite" else "Add favorite",
+                                tint = if (favoriteNumber == contact.number) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.42f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { onCall(contact) },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Call,
+                                contentDescription = "Call ${contact.name}",
+                                tint = Color.White.copy(alpha = 0.82f),
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
