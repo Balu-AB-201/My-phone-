@@ -39,6 +39,9 @@ import androidx.compose.material.icons.rounded.Backspace
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.CallReceived
+import androidx.compose.material.icons.rounded.CallMade
+import androidx.compose.material.icons.rounded.CallMissed
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -662,6 +665,26 @@ private fun RecentCallsPanel(
                         .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .liquidGlass(
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                                tint = if (call.type == CallLog.Calls.MISSED_TYPE) Color(0xFFFF6B7A).copy(alpha = 0.13f) else Color.White.copy(alpha = 0.08f),
+                                highlight = Color.White.copy(alpha = 0.20f),
+                                borderAlpha = 0.24f
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val callIcon = when (call.type) {
+                            CallLog.Calls.MISSED_TYPE -> Icons.Rounded.CallMissed
+                            CallLog.Calls.INCOMING_TYPE -> Icons.Rounded.CallReceived
+                            else -> Icons.Rounded.CallMade
+                        }
+                        Icon(callIcon, contentDescription = label, tint = if (call.type == CallLog.Calls.MISSED_TYPE) Color(0xFFFF8A8A) else Color.White.copy(alpha = 0.72f), modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(Modifier.size(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             call.contactName ?: call.number,
