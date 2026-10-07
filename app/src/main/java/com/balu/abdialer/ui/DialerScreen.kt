@@ -76,12 +76,12 @@ private val keys = listOf(
 @Composable
 fun DialerScreen(modifier: Modifier = Modifier) {
     var number by rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("ab_dialer", android.content.Context.MODE_PRIVATE) }
     var favoriteNumber by rememberSaveable { mutableStateOf(preferences.getString("favorite_number", "") ?: "") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
     var showRecents by rememberSaveable { mutableStateOf(false) }
     var recentCalls by remember { mutableStateOf<List<RecentCall>>(emptyList()) }
-    val context = LocalContext.current
     val telecomCall = ActiveCallStore.uiState.collectAsState().value
     val telephonyManager = remember {
         context.getSystemService(TelephonyManager::class.java)
