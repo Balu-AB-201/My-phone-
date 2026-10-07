@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,12 +59,15 @@ fun InCallScreen(
     var muted by remember { mutableStateOf(false) }
     var speaker by remember { mutableStateOf(false) }
     var keypad by remember { mutableStateOf(false) }
-    var connected by remember { mutableStateOf(false) }
+    val callState by ActiveCallStore.uiState.collectAsState()
+    val connected = callState?.state == Call.STATE_ACTIVE
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
-            if (!incoming) elapsedSeconds++
+    LaunchedEffect(incoming) {
+        if (!incoming) {
+            while (true) {
+                delay(1000)
+                elapsedSeconds++
+            }
         }
     }
 
@@ -211,8 +215,11 @@ fun InCallScreen(
 }
 
 @Composable
+private val DTMF_DIGITS = listOf("1","2","3","4","5","6","7","8","9","*","0","#")
+
+@Composable
 private fun DtmfKeypad() {
-    val digits = listOf("1","2","3","4","5","6","7","8","9","*","0","#")
+    val digits = DTMF_DIGITS
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
