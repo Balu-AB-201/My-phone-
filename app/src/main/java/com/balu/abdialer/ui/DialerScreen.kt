@@ -621,6 +621,25 @@ private fun RecentCallsPanel(
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("ab_dialer", android.content.Context.MODE_PRIVATE) }
     val favoriteNumber = remember { preferences.getString("favorite_number", "") ?: "" }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedFilter by rememberSaveable { mutableStateOf("All") }
+
+    val filteredCalls = calls.filter { call ->
+        val matchesSearch = if (searchQuery.isBlank()) {
+            true
+        } else {
+            val query = searchQuery.trim()
+            call.number.contains(query, ignoreCase = true) ||
+                (call.contactName?.contains(query, ignoreCase = true) == true)
+        }
+        val matchesFilter = when (selectedFilter) {
+            "Missed" -> call.type == CallLog.Calls.MISSED_TYPE
+            "Incoming" -> call.type == CallLog.Calls.INCOMING_TYPE
+            "Outgoing" -> call.type == CallLog.Calls.OUTGOING_TYPE
+            else -> true
+        }
+        matchesSearch && matchesFilter
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -646,15 +665,70 @@ private fun RecentCallsPanel(
 
         Spacer(Modifier.size(10.dp))
 
-        if (calls.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .liquidGlass(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                    tint = Color.White.copy(alpha = 0.07f),
+                    highlight = Color.White.copy(alpha = 0.18f),
+                    borderAlpha = 0.22f
+                )
+                .padding(horizontal = 14.dp, vertical = 11.dp)
+        ) {
+            if (searchQuery.isEmpty()) {
+                Text("Search recent calls", color = Color.White.copy(alpha = 0.42f), fontSize = 14.sp)
+            }
+            BasicTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 14.sp),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(Modifier.size(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("All", "Missed", "Incoming", "Outgoing").forEach { filter ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .liquidGlass(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            tint = if (selectedFilter == filter) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
+                            highlight = if (selectedFilter == filter) Color.White.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.14f),
+                            borderAlpha = if (selectedFilter == filter) 0.34f else 0.18f
+                        )
+                        .clickable { selectedFilter = filter }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        filter,
+                        color = Color.White.copy(alpha = if (selectedFilter == filter) 0.94f else 0.58f),
+                        fontSize = 11.sp,
+                        fontWeight = if (selectedFilter == filter) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.size(10.dp))
+
+        if (filteredCalls.isEmpty()) {
             Text(
-                "No recent calls",
+                if (calls.isEmpty()) "No recent calls" else "No matching calls",
                 color = Color.White.copy(alpha = 0.62f),
                 fontSize = 14.sp,
                 modifier = Modifier.padding(vertical = 18.dp)
             )
         } else {
-            calls.forEach { call ->
+            filteredCalls.forEach { call ->
                 val label = when (call.type) {
                     CallLog.Calls.MISSED_TYPE -> "Missed"
                     CallLog.Calls.INCOMING_TYPE -> "Incoming"
