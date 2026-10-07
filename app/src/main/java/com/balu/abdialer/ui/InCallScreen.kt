@@ -1,5 +1,7 @@
 package com.balu.abdialer.ui
 
+import android.content.Context
+import android.media.AudioManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -44,6 +48,17 @@ fun InCallScreen(
     var muted by remember { mutableStateOf(false) }
     var speaker by remember { mutableStateOf(false) }
     var keypad by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val audioManager = remember {
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioManager.isMicrophoneMute = false
+            audioManager.isSpeakerphoneOn = false
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -97,13 +112,19 @@ fun InCallScreen(
                     active = muted,
                     label = if (muted) "Unmute" else "Mute",
                     icon = { Icon(Icons.Rounded.MicOff, null, tint = Color.White) },
-                    onClick = { muted = !muted }
+                    onClick = {
+                        muted = !muted
+                        audioManager.isMicrophoneMute = muted
+                    }
                 )
                 CallControl(
                     active = speaker,
-                    label = "Speaker",
+                    label = if (speaker) "Speaker on" else "Speaker",
                     icon = { Icon(Icons.Rounded.VolumeUp, null, tint = Color.White) },
-                    onClick = { speaker = !speaker }
+                    onClick = {
+                        speaker = !speaker
+                        audioManager.isSpeakerphoneOn = speaker
+                    }
                 )
                 CallControl(
                     active = keypad,
