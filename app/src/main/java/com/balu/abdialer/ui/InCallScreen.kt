@@ -1,10 +1,9 @@
 package com.balu.abdialer.ui
 
-import android.content.Context
-import android.media.AudioManager
-import com.balu.abdialer.ActiveCallStore
+import android.telecom.Call
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.MicOff
@@ -27,7 +27,6 @@ import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,31 +37,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.balu.abdialer.ActiveCallStore
 import kotlinx.coroutines.delay
 
 @Composable
 fun InCallScreen(
     number: String,
-    onEndCall: () -> Unit
+    onEndCall: () -> Unit,
+    incoming: Boolean = false
 ) {
     var elapsedSeconds by remember { mutableIntStateOf(0) }
     var muted by remember { mutableStateOf(false) }
     var speaker by remember { mutableStateOf(false) }
     var keypad by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val audioManager = remember {
-        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            audioManager.isMicrophoneMute = false
-            audioManager.isSpeakerphoneOn = false
-        }
-    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -73,6 +62,7 @@ fun InCallScreen(
 
     val minutes = elapsedSeconds / 60
     val seconds = elapsedSeconds % 60
+    val title = if (incoming) "Incoming call" else "Calling"
 
     Box(
         modifier = Modifier
@@ -86,72 +76,120 @@ fun InCallScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.size(74.dp))
-            Text("Calling", color = Color.White.copy(alpha = 0.62f), fontSize = 16.sp)
+            Text(title, color = Color.White.copy(alpha = 0.62f), fontSize = 16.sp)
             Spacer(Modifier.size(10.dp))
             Text(number, color = Color.White, fontSize = 32.sp)
             Spacer(Modifier.size(8.dp))
-            Text(
-                String.format("%02d:%02d", minutes, seconds),
-                color = Color.White.copy(alpha = 0.62f),
-                fontSize = 16.sp
-            )
+            if (!incoming) {
+                Text(
+                    String.format("%02d:%02d", minutes, seconds),
+                    color = Color.White.copy(alpha = 0.62f),
+                    fontSize = 16.sp
+                )
+            }
 
             Spacer(Modifier.weight(1f))
 
-            if (keypad) {
-                DtmfKeypad()
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CallControl(
-                    active = muted,
-                    label = if (muted) "Unmute" else "Mute",
-                    icon = { Icon(Icons.Rounded.MicOff, null, tint = Color.White) },
-                    onClick = {
-                        muted = !muted
-                        audioManager.isMicrophoneMute = muted
+            if (incoming) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(74.dp)
+                            .clip(CircleShape)
+                            .liquidGlass(
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                tint = Color(0xFF35D07F).copy(alpha = 0.45f)
+                            )
+                            .clickable(
+                                indication = null,
+                                interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                                onClick = ActiveCallStore::answer
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Call, "Answer", tint = Color.White)
                     }
-                )
-                CallControl(
-                    active = speaker,
-                    label = if (speaker) "Speaker on" else "Speaker",
-                    icon = { Icon(Icons.Rounded.VolumeUp, null, tint = Color.White) },
-                    onClick = {
-                        speaker = !speaker
-                        audioManager.isSpeakerphoneOn = speaker
+                    Box(
+                        modifier = Modifier
+                            .size(74.dp)
+                            .clip(CircleShape)
+                            .liquidGlass(
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                tint = Color(0xFFE5484D).copy(alpha = 0.5f)
+                            )
+                            .clickable(
+                                indication = null,
+                                interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                                onClick = {
+                                    ActiveCallStore.reject()
+                                    onEndCall()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.CallEnd, "Reject", tint = Color.White)
                     }
-                )
-                CallControl(
-                    active = keypad,
-                    label = "Keypad",
-                    icon = { Icon(Icons.Rounded.Dialpad, null, tint = Color.White) },
-                    onClick = { keypad = !keypad }
-                )
-            }
+                }
+            } else {
+                if (keypad) DtmfKeypad()
 
-            Spacer(Modifier.size(34.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(74.dp)
-                    .clip(CircleShape)
-                    .liquidGlass(
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                        tint = Color(0xFFE5484D).copy(alpha = 0.5f),
-                        highlight = Color.White.copy(alpha = 0.38f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CallControl(
+                        active = muted,
+                        label = if (muted) "Unmute" else "Mute",
+                        icon = { Icon(Icons.Rounded.MicOff, null, tint = Color.White) },
+                        onClick = {
+                            muted = !muted
+                            ActiveCallStore.setMuted(muted)
+                        }
                     )
-                    .clickable(
-                        indication = null,
-                        interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
-                        onClick = onEndCall
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.CallEnd, "End call", tint = Color.White)
+                    CallControl(
+                        active = speaker,
+                        label = if (speaker) "Speaker on" else "Speaker",
+                        icon = { Icon(Icons.Rounded.VolumeUp, null, tint = Color.White) },
+                        onClick = {
+                            speaker = !speaker
+                            ActiveCallStore.setSpeaker(speaker)
+                        }
+                    )
+                    CallControl(
+                        active = keypad,
+                        label = "Keypad",
+                        icon = { Icon(Icons.Rounded.Dialpad, null, tint = Color.White) },
+                        onClick = { keypad = !keypad }
+                    )
+                }
+
+                Spacer(Modifier.size(34.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(74.dp)
+                        .clip(CircleShape)
+                        .liquidGlass(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            tint = Color(0xFFE5484D).copy(alpha = 0.5f),
+                            highlight = Color.White.copy(alpha = 0.38f)
+                        )
+                        .clickable(
+                            indication = null,
+                            interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                            onClick = {
+                                ActiveCallStore.disconnect()
+                                onEndCall()
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.CallEnd, "End call", tint = Color.White)
+                }
             }
 
             Spacer(Modifier.size(26.dp))
@@ -161,23 +199,13 @@ fun InCallScreen(
 
 @Composable
 private fun DtmfKeypad() {
-    val digits = listOf(
-        "1", "2", "3",
-        "4", "5", "6",
-        "7", "8", "9",
-        "*", "0", "#"
-    )
-
+    val digits = listOf("1","2","3","4","5","6","7","8","9","*","0","#")
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            "Keypad",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 14.sp,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        Text("Keypad", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp,
+            modifier = Modifier.padding(bottom = 12.dp))
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             modifier = Modifier.fillMaxWidth().size(250.dp),
@@ -189,20 +217,21 @@ private fun DtmfKeypad() {
                     modifier = Modifier
                         .size(68.dp)
                         .liquidGlass()
-                        .clickable(
-                            indication = null,
-                            interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
-                            onClick = {
-                                digit.firstOrNull()?.let { ActiveCallStore.playDtmfTone(it) }
-                            }
-                        ),
+                        .pointerInput(digit) {
+                            detectTapGestures(
+                                onPress = {
+                                    digit.firstOrNull()?.let { ActiveCallStore.playDtmfTone(it) }
+                                    try {
+                                        tryAwaitRelease()
+                                    } finally {
+                                        ActiveCallStore.stopDtmfTone()
+                                    }
+                                }
+                            )
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        digit,
-                        color = Color.White,
-                        fontSize = 24.sp
-                    )
+                    Text(digit, color = Color.White, fontSize = 24.sp)
                 }
             }
         }
@@ -232,9 +261,7 @@ private fun CallControl(
                     onClick = onClick
                 ),
             contentAlignment = Alignment.Center
-        ) {
-            icon()
-        }
+        ) { icon() }
         Spacer(Modifier.size(8.dp))
         Text(label, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
     }
