@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,6 +68,11 @@ private data class RecentCall(
     val contactName: String?
 )
 
+private data class ContactEntry(
+    val name: String,
+    val number: String
+)
+
 private val keys = listOf(
     DialKey("1", ""), DialKey("2", "ABC"), DialKey("3", "DEF"),
     DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO"),
@@ -81,7 +88,9 @@ fun DialerScreen(modifier: Modifier = Modifier) {
     var favoriteNumber by rememberSaveable { mutableStateOf(preferences.getString("favorite_number", "") ?: "") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
     var showRecents by rememberSaveable { mutableStateOf(false) }
+    var showContacts by rememberSaveable { mutableStateOf(false) }
     var recentCalls by remember { mutableStateOf<List<RecentCall>>(emptyList()) }
+    var contacts by remember { mutableStateOf<List<ContactEntry>>(emptyList()) }
     val telecomCall = ActiveCallStore.uiState.collectAsState().value
     val telephonyManager = remember {
         context.getSystemService(TelephonyManager::class.java)
@@ -189,11 +198,25 @@ fun DialerScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            contacts = loadContacts(context)
+            showContacts = true
+        }
+    }
+
     fun openContacts() {
-        runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("content://contacts/people/")
-            })
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_CONTACTS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            contacts = loadContacts(context)
+            showContacts = true
+        } else {
+            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
         }
     }
 
@@ -258,7 +281,17 @@ fun DialerScreen(modifier: Modifier = Modifier) {
 
             Spacer(Modifier.size(96.dp))
 
-            if (showRecents) {
+            if (showContacts) {
+                ContactsPanel(
+                    contacts = contacts,
+                    onSelect = {
+                        number = it.number
+                        showContacts = false
+                    },
+                    onClose = { showContacts = false }
+                )
+                Spacer(Modifier.size(16.dp))
+            } else if (showRecents) {
                 RecentCallsPanel(
                     calls = recentCalls,
                     onSelect = {
@@ -424,6 +457,33 @@ private fun lookupContactName(
     }.getOrNull()
 }
 
+private fun loadContacts(context: android.content.Context): List<ContactEntry> {
+    val result = mutableListOf<ContactEntry>()
+    runCatching {
+        context.contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+            ),
+            null,
+            null,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " COLLATE NOCASE ASC"
+        )?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(nameIndex).orEmpty().trim()
+                val number = cursor.getString(numberIndex).orEmpty().trim()
+                if (name.isNotBlank() && number.isNotBlank()) {
+                    result += ContactEntry(name, number)
+                }
+            }
+        }
+    }
+    return result.distinctBy { it.name + "|" + it.number }
+}
+
 private fun loadRecentCalls(context: android.content.Context): List<RecentCall> {
     val result = mutableListOf<RecentCall>()
     runCatching {
@@ -537,6 +597,91 @@ private fun RecentCallsPanel(
                         tint = Color.White.copy(alpha = 0.8f),
                         modifier = Modifier.size(22.dp)
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContactsPanel(
+    contacts: List<ContactEntry>,
+    onSelect: (ContactEntry) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .liquidGlass(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                tint = Color.White.copy(alpha = 0.10f)
+            )
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Contacts", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Close",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 13.sp,
+                modifier = Modifier.clickable(onClick = onClose)
+            )
+        }
+        Spacer(Modifier.size(10.dp))
+        if (contacts.isEmpty()) {
+            Text(
+                "No contacts found",
+                color = Color.White.copy(alpha = 0.62f),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = 18.dp)
+            )
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                items(contacts, key = { it.name + "|" + it.number }) { contact ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(contact) }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .liquidGlass(
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(21.dp),
+                                    tint = Color.White.copy(alpha = 0.08f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                contact.name.take(1).uppercase(),
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Spacer(Modifier.size(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                contact.name,
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                contact.number,
+                                color = Color.White.copy(alpha = 0.55f),
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }
