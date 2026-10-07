@@ -58,6 +58,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -91,6 +93,7 @@ private val keys = listOf(
 fun DialerScreen(modifier: Modifier = Modifier) {
     var number by rememberSaveable { mutableStateOf("") }
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val preferences = remember { context.getSharedPreferences("ab_dialer", android.content.Context.MODE_PRIVATE) }
     var favoriteNumber by rememberSaveable { mutableStateOf(preferences.getString("favorite_number", "") ?: "") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
@@ -486,8 +489,24 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 }
 
                 IconButton(
-                    onClick = { if (number.isNotEmpty()) number = number.dropLast(1) },
-                    modifier = Modifier.size(52.dp)
+                    onClick = {
+                        if (number.isNotEmpty()) {
+                            haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                            number = number.dropLast(1)
+                        }
+                    },
+                    modifier = Modifier
+                        .size(52.dp)
+                        .pointerInput(number) {
+                            detectTapGestures(
+                                onLongPress = {
+                                    if (number.isNotEmpty()) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        number = ""
+                                    }
+                                }
+                            )
+                        }
                 ) {
                     Icon(
                         Icons.Rounded.Backspace,
@@ -503,17 +522,19 @@ fun DialerScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun DialKeyButton(
     key: DialKey,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
             .size(82.dp)
             .liquidGlass()
-            .clickable(
-                indication = null,
-                interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
-                onClick = onClick
-            ),
+            .pointerInput(key.number) {
+                detectTapGestures(
+                    onTap = { onClick() },
+                    onLongPress = { onLongPress() }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
