@@ -618,6 +618,9 @@ private fun RecentCallsPanel(
     onCall: (RecentCall) -> Unit,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("ab_dialer", android.content.Context.MODE_PRIVATE) }
+    val favoriteNumber = remember { preferences.getString("favorite_number", "") ?: "" }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -716,6 +719,15 @@ private fun RecentCallsPanel(
                                 color = Color.White.copy(alpha = 0.38f),
                                 fontSize = 11.sp
                             )
+                            if (favoriteNumber.isNotBlank() && favoriteNumber == call.number) {
+                                Spacer(Modifier.size(6.dp))
+                                Icon(
+                                    Icons.Rounded.Star,
+                                    contentDescription = "Favorite",
+                                    tint = Color(0xFFFFD54F),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
                         }
                     }
                     IconButton(
