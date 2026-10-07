@@ -1,5 +1,9 @@
 package com.balu.abdialer.ui
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,12 +25,15 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -47,6 +54,39 @@ private val keys = listOf(
 @Composable
 fun DialerScreen(modifier: Modifier = Modifier) {
     var number by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val callLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted && number.isNotBlank()) {
+            context.startActivity(
+                Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number)))
+            )
+        }
+    }
+
+    fun placeCall() {
+        if (number.isBlank()) return
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CALL_PHONE
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            context.startActivity(
+                Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number)))
+            )
+        } else {
+            callLauncher.launch(Manifest.permission.CALL_PHONE)
+        }
+    }
+
+    fun openContacts() {
+        runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse("content://contacts/people/")
+            })
+        }
+    }
 
     Box(
         modifier = modifier.background(
@@ -77,7 +117,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                     fontSize = 25.sp,
                     fontWeight = FontWeight.SemiBold
                 )
-                IconButton(onClick = { }) {
+                IconButton(onClick = ::openContacts) {
                     Icon(
                         imageVector = Icons.Rounded.Contacts,
                         contentDescription = "Contacts",
@@ -140,7 +180,12 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                         .liquidGlass(
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
                         )
-                        .background(Color(0xFF35D07F).copy(alpha = 0.72f)),
+                        .background(Color(0xFF35D07F).copy(alpha = 0.72f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                        onClick = ::placeCall
+                    ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
