@@ -35,6 +35,14 @@ object ActiveCallStore {
         runCatching { activeCall?.disconnect() }
     }
 
+    fun playDtmfTone(digit: Char) {
+        runCatching { activeCall?.playDtmfTone(digit) }
+    }
+
+    fun stopDtmfTone() {
+        runCatching { activeCall?.stopDtmfTone() }
+    }
+
     fun setMuted(muted: Boolean) {
         runCatching { inCallService?.setMuted(muted) }
     }
