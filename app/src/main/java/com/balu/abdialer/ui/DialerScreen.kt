@@ -322,6 +322,60 @@ fun DialerScreen(modifier: Modifier = Modifier) {
 
             Spacer(Modifier.size(24.dp))
 
+            if (number.isEmpty() && favoriteNumber.isNotBlank()) {
+                Spacer(Modifier.size(14.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .liquidGlass(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+                            tint = Color.White.copy(alpha = 0.08f)
+                        )
+                        .clickable(
+                            indication = null,
+                            interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                            onClick = { number = favoriteNumber }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .liquidGlass(
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(19.dp),
+                                tint = Color.White.copy(alpha = 0.10f)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Star,
+                            contentDescription = "Favorite",
+                            tint = Color(0xFFFFD54F),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Favorite", color = Color.White.copy(alpha = 0.62f), fontSize = 12.sp)
+                        Text(
+                            favoriteNumber,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Icon(
+                        Icons.Rounded.Call,
+                        contentDescription = "Call favorite",
+                        tint = Color.White.copy(alpha = 0.86f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 keys.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
