@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -92,6 +93,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
     var showContacts by rememberSaveable { mutableStateOf(false) }
     var recentCalls by remember { mutableStateOf<List<RecentCall>>(emptyList()) }
     var contacts by remember { mutableStateOf<List<ContactEntry>>(emptyList()) }
+    var contactSearch by rememberSaveable { mutableStateOf("") }
     val telecomCall = ActiveCallStore.uiState.collectAsState().value
     val telephonyManager = remember {
         context.getSystemService(TelephonyManager::class.java)
@@ -235,6 +237,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
     ) { granted ->
         if (granted) {
             contacts = loadContacts(context)
+            contactSearch = ""
             showContacts = true
         }
     }
@@ -316,6 +319,8 @@ fun DialerScreen(modifier: Modifier = Modifier) {
             if (showContacts) {
                 ContactsPanel(
                     contacts = contacts,
+                    searchQuery = contactSearch,
+                    onSearchQueryChange = { contactSearch = it },
                     onSelect = {
                         number = it.number
                         showContacts = false
@@ -699,6 +704,8 @@ private fun RecentCallsPanel(
 @Composable
 private fun ContactsPanel(
     contacts: List<ContactEntry>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onSelect: (ContactEntry) -> Unit,
     onClose: () -> Unit
 ) {
@@ -725,16 +732,49 @@ private fun ContactsPanel(
             )
         }
         Spacer(Modifier.size(10.dp))
-        if (contacts.isEmpty()) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .liquidGlass(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                    tint = Color.White.copy(alpha = 0.07f),
+                    highlight = Color.White.copy(alpha = 0.18f),
+                    borderAlpha = 0.22f
+                )
+                .padding(horizontal = 14.dp, vertical = 11.dp)
+        ) {
+            if (searchQuery.isEmpty()) {
+                Text("Search contacts", color = Color.White.copy(alpha = 0.42f), fontSize = 14.sp)
+            }
+            BasicTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 14.sp),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(Modifier.size(10.dp))
+
+        val filteredContacts = if (searchQuery.isBlank()) {
+            contacts
+        } else {
+            val query = searchQuery.trim()
+            contacts.filter { it.name.contains(query, ignoreCase = true) || it.number.contains(query, ignoreCase = true) }
+        }
+
+        if (filteredContacts.isEmpty()) {
             Text(
-                "No contacts found",
+                if (contacts.isEmpty()) "No contacts found" else "No matching contacts",
                 color = Color.White.copy(alpha = 0.62f),
                 fontSize = 14.sp,
                 modifier = Modifier.padding(vertical = 18.dp)
             )
         } else {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(contacts, key = { it.name + "|" + it.number }) { contact ->
+                items(filteredContacts, key = { it.name + "|" + it.number }) { contact ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
