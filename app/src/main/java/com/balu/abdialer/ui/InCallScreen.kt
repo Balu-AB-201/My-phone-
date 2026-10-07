@@ -2,6 +2,11 @@ package com.balu.abdialer.ui
 
 import android.telecom.Call
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -53,11 +58,12 @@ fun InCallScreen(
     var muted by remember { mutableStateOf(false) }
     var speaker by remember { mutableStateOf(false) }
     var keypad by remember { mutableStateOf(false) }
+    var connected by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000)
-            elapsedSeconds++
+            if (!incoming) elapsedSeconds++
         }
     }
 
@@ -83,7 +89,7 @@ fun InCallScreen(
             Spacer(Modifier.size(8.dp))
             if (!incoming) {
                 Text(
-                    String.format("%02d:%02d", minutes, seconds),
+                    if (connected) String.format("%02d:%02d", minutes, seconds) else "Connecting…",
                     color = Color.White.copy(alpha = 0.62f),
                     fontSize = 16.sp
                 )
@@ -135,7 +141,13 @@ fun InCallScreen(
                     }
                 }
             } else {
-                if (keypad) DtmfKeypad()
+                AnimatedVisibility(
+                    visible = keypad,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    DtmfKeypad()
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
