@@ -63,6 +63,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted && number.isNotBlank()) {
+            activeCallNumber = number
             context.startActivity(
                 Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number)))
             )
@@ -76,6 +77,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 Manifest.permission.CALL_PHONE
             ) == PackageManager.PERMISSION_GRANTED
         ) {
+            activeCallNumber = number
             context.startActivity(
                 Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number)))
             )
