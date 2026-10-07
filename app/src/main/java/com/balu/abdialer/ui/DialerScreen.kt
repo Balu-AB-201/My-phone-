@@ -1,6 +1,7 @@
 package com.balu.abdialer.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Backspace
@@ -86,7 +86,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.size(96.dp))
 
             Text(
                 text = number.ifEmpty { " " },
@@ -174,7 +174,12 @@ private fun DialKeyButton(
     Box(
         modifier = Modifier
             .size(82.dp)
-            .liquidGlass(),
+            .liquidGlass()
+            .clickable(
+                indication = null,
+                interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -193,19 +198,5 @@ private fun DialKeyButton(
                 )
             }
         }
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
-                .background(Color.Transparent)
-                .then(Modifier)
-                .clickableWithoutRipple(onClick)
-        )
     }
 }
-
-private fun Modifier.clickableWithoutRipple(onClick: () -> Unit): Modifier =
-    androidx.compose.foundation.clickable(
-        indication = null,
-        interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource()
-    ) { onClick() }
