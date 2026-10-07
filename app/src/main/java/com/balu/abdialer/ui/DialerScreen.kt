@@ -30,6 +30,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,7 +54,8 @@ private val keys = listOf(
 
 @Composable
 fun DialerScreen(modifier: Modifier = Modifier) {
-    var number by remember { mutableStateOf("") }
+    var number by rememberSaveable { mutableStateOf("") }
+    var favoriteNumber by rememberSaveable { mutableStateOf("") }
     val context = LocalContext.current
     val callLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -163,13 +165,13 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { },
+                    onClick = { if (number.isNotBlank()) favoriteNumber = number },
                     modifier = Modifier.size(52.dp)
                 ) {
                     Icon(
                         Icons.Rounded.Star,
                         contentDescription = "Favorites",
-                        tint = Color.White.copy(alpha = 0.82f)
+                        tint = if (favoriteNumber == number && number.isNotBlank()) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.82f)
                     )
                 }
 
