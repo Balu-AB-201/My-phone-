@@ -2,6 +2,7 @@ package com.balu.abdialer.ui
 
 import android.Manifest
 import android.provider.CallLog
+import android.provider.ContactsContract
 import android.telecom.Call
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -61,7 +62,8 @@ private data class DialKey(val number: String, val letters: String)
 private data class RecentCall(
     val number: String,
     val type: Int,
-    val timestamp: Long
+    val timestamp: Long,
+    val contactName: String?
 )
 
 private val keys = listOf(
@@ -388,6 +390,33 @@ private fun DialKeyButton(
     }
 }
 
+private fun lookupContactName(
+    context: android.content.Context,
+    number: String
+): String? {
+    return runCatching {
+        val uri = Uri.withAppendedPath(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+            Uri.encode(number)
+        )
+        context.contentResolver.query(
+            uri,
+            arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                cursor.getString(
+                    cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME)
+                )?.takeIf { it.isNotBlank() }
+            } else {
+                null
+            }
+        }
+    }.getOrNull()
+}
+
 private fun loadRecentCalls(context: android.content.Context): List<RecentCall> {
     val result = mutableListOf<RecentCall>()
     runCatching {
@@ -404,7 +433,12 @@ private fun loadRecentCalls(context: android.content.Context): List<RecentCall> 
             while (cursor.moveToNext() && result.size < 8) {
                 val number = cursor.getString(numberIndex).orEmpty()
                 if (number.isNotBlank()) {
-                    result += RecentCall(number, cursor.getInt(typeIndex), cursor.getLong(dateIndex))
+                    result += RecentCall(
+                        number = number,
+                        type = cursor.getInt(typeIndex),
+                        timestamp = cursor.getLong(dateIndex),
+                        contactName = lookupContactName(context, number)
+                    )
                 }
             }
         }
@@ -467,12 +501,21 @@ private fun RecentCallsPanel(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            call.number,
+                            call.contactName ?: call.number,
                             color = Color.White,
                             fontSize = 16.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (call.contactName != null) {
+                            Text(
+                                call.number,
+                                color = Color.White.copy(alpha = 0.48f),
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Text(
                             label,
                             color = if (call.type == CallLog.Calls.MISSED_TYPE)
