@@ -11,6 +11,9 @@ import android.os.Build
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.balu.abdialer.ActiveCallStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -676,13 +679,21 @@ private fun RecentCallsPanel(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Text(
-                            label,
-                            color = if (call.type == CallLog.Calls.MISSED_TYPE)
-                                Color(0xFFFF8A8A)
-                            else Color.White.copy(alpha = 0.58f),
-                            fontSize = 12.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                label,
+                                color = if (call.type == CallLog.Calls.MISSED_TYPE)
+                                    Color(0xFFFF8A8A)
+                                else Color.White.copy(alpha = 0.58f),
+                                fontSize = 12.sp
+                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text(
+                                formatRecentCallTime(call.timestamp),
+                                color = Color.White.copy(alpha = 0.38f),
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                     IconButton(
                         onClick = { onCall(call) },
@@ -698,6 +709,18 @@ private fun RecentCallsPanel(
                 }
             }
         }
+    }
+}
+
+private fun formatRecentCallTime(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val age = (now - timestamp).coerceAtLeast(0L)
+    return when {
+        age < 60_000L -> "Just now"
+        age < 3_600_000L -> "${age / 60_000L}m ago"
+        age < 86_400_000L -> "${age / 3_600_000L}h ago"
+        age < 172_800_000L -> "Yesterday"
+        else -> SimpleDateFormat("d MMM, h:mm a", Locale.getDefault()).format(Date(timestamp))
     }
 }
 
