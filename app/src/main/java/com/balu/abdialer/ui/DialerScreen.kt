@@ -249,8 +249,8 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                         contentDescription = "Contacts",
                         tint = Color.White
                     )
+                    }
                 }
-            }
 
             Spacer(Modifier.size(96.dp))
 
