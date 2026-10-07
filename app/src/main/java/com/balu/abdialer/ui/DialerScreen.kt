@@ -491,7 +491,6 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                 IconButton(
                     onClick = {
                         if (number.isNotEmpty()) {
-                            haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
                             number = number.dropLast(1)
                         }
                     },
