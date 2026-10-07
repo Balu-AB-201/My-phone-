@@ -62,12 +62,15 @@ fun InCallScreen(
     val callState by ActiveCallStore.uiState.collectAsState()
     val connected = callState?.state == Call.STATE_ACTIVE
 
-    LaunchedEffect(incoming) {
-        if (!incoming) {
+    LaunchedEffect(incoming, connected) {
+        if (!incoming && connected) {
+            elapsedSeconds = 0
             while (true) {
                 delay(1000)
                 elapsedSeconds++
             }
+        } else if (!incoming) {
+            elapsedSeconds = 0
         }
     }
 
