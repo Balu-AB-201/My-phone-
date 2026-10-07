@@ -1,6 +1,7 @@
 package com.balu.abdialer.ui
 
 import android.Manifest
+import android.telecom.Call
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +67,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
     var favoriteNumber by rememberSaveable { mutableStateOf("") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val telecomCall = ActiveCallStore.uiState.collectAsState().value
     val telephonyManager = remember {
         context.getSystemService(TelephonyManager::class.java)
     }
@@ -157,10 +160,18 @@ fun DialerScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    activeCallNumber?.let { callNumber ->
+    val callUi = telecomCall ?: activeCallNumber?.let {
+        com.balu.abdialer.CallUiState(it, Call.STATE_DIALING)
+    }
+
+    callUi?.let { call ->
         InCallScreen(
-            number = callNumber,
-            onEndCall = { activeCallNumber = null }
+            number = call.number,
+            incoming = call.state == Call.STATE_RINGING,
+            onEndCall = {
+                ActiveCallStore.disconnect()
+                activeCallNumber = null
+            }
         )
         return
     }
