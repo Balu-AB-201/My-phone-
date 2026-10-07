@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CallEnd
@@ -95,12 +98,7 @@ fun InCallScreen(
             Spacer(Modifier.weight(1f))
 
             if (keypad) {
-                Text(
-                    "Keypad",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(bottom = 18.dp)
-                )
+                DtmfKeypad()
             }
 
             Row(
@@ -156,6 +154,56 @@ fun InCallScreen(
             }
 
             Spacer(Modifier.size(26.dp))
+        }
+    }
+}
+
+@Composable
+private fun DtmfKeypad() {
+    val digits = listOf(
+        "1", "2", "3",
+        "4", "5", "6",
+        "7", "8", "9",
+        "*", "0", "#"
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "Keypad",
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 14.sp,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.fillMaxWidth().size(250.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(digits) { digit ->
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .liquidGlass()
+                        .clickable(
+                            indication = null,
+                            interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
+                            onClick = {
+                                digit.firstOrNull()?.let { ActiveCallStore.playDtmfTone(it) }
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        digit,
+                        color = Color.White,
+                        fontSize = 24.sp
+                    )
+                }
+            }
         }
     }
 }
