@@ -58,6 +58,7 @@ private val keys = listOf(
 fun DialerScreen(modifier: Modifier = Modifier) {
     var number by rememberSaveable { mutableStateOf("") }
     var favoriteNumber by rememberSaveable { mutableStateOf("") }
+    var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val callLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
