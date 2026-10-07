@@ -87,6 +87,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
     val preferences = remember { context.getSharedPreferences("ab_dialer", android.content.Context.MODE_PRIVATE) }
     var favoriteNumber by rememberSaveable { mutableStateOf(preferences.getString("favorite_number", "") ?: "") }
     var activeCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCallNumber by rememberSaveable { mutableStateOf<String?>(null) }
     var showRecents by rememberSaveable { mutableStateOf(false) }
     var showContacts by rememberSaveable { mutableStateOf(false) }
     var recentCalls by remember { mutableStateOf<List<RecentCall>>(emptyList()) }
@@ -163,10 +164,41 @@ fun DialerScreen(modifier: Modifier = Modifier) {
         val callGranted = permissions[Manifest.permission.CALL_PHONE] == true
         val phoneStateGranted = permissions[Manifest.permission.READ_PHONE_STATE] == true
 
-        if (callGranted && phoneStateGranted && number.isNotBlank()) {
-            activeCallNumber = number
+        val targetNumber = pendingCallNumber ?: number
+        if (callGranted && phoneStateGranted && targetNumber.isNotBlank()) {
+            activeCallNumber = targetNumber
+            pendingCallNumber = null
             context.startActivity(
-                Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number)))
+                Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(targetNumber)))
+            )
+        }
+    }
+
+    fun callRecentNumber(target: String) {
+        if (target.isBlank()) return
+
+        pendingCallNumber = target
+        val callGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CALL_PHONE
+        ) == PackageManager.PERMISSION_GRANTED
+        val phoneStateGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_PHONE_STATE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (callGranted && phoneStateGranted) {
+            activeCallNumber = target
+            pendingCallNumber = null
+            context.startActivity(
+                Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(target)))
+            )
+        } else {
+            callLauncher.launch(
+                arrayOf(
+                    Manifest.permission.CALL_PHONE,
+                    Manifest.permission.READ_PHONE_STATE
+                )
             )
         }
     }
@@ -298,6 +330,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                         number = it.number
                         showRecents = false
                     },
+                    onCall = { callRecentNumber(it.number) },
                     onClose = { showRecents = false }
                 )
                 Spacer(Modifier.size(16.dp))
@@ -571,6 +604,7 @@ private fun loadRecentCalls(context: android.content.Context): List<RecentCall> 
 private fun RecentCallsPanel(
     calls: List<RecentCall>,
     onSelect: (RecentCall) -> Unit,
+    onCall: (RecentCall) -> Unit,
     onClose: () -> Unit
 ) {
     Column(
@@ -645,12 +679,17 @@ private fun RecentCallsPanel(
                             fontSize = 12.sp
                         )
                     }
-                    Icon(
-                        Icons.Rounded.Call,
-                        contentDescription = "Call",
-                        tint = Color.White.copy(alpha = 0.8f),
-                        modifier = Modifier.size(22.dp)
-                    )
+                    IconButton(
+                        onClick = { onCall(call) },
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Call,
+                            contentDescription = "Call ${call.contactName ?: call.number}",
+                            tint = Color.White.copy(alpha = 0.86f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }
