@@ -251,6 +251,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                     )
                     }
                 }
+            }
 
             Spacer(Modifier.size(96.dp))
 
