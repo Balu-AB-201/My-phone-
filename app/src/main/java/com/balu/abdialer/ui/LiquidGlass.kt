@@ -110,13 +110,10 @@ fun Modifier.liquidGlass(
 
 /**
  * A restrained moving specular reflection for primary glass controls.
- * Apply only to hero controls to keep the animation lightweight.
+ * Use on a small number of hero controls to keep animation inexpensive.
  */
 @Composable
-fun Modifier.liquidGlassSweep(
-    shape: RoundedCornerShape = RoundedCornerShape(50.dp),
-    durationMillis: Int = 2600
-): Modifier {
+fun Modifier.liquidGlassSweep(durationMillis: Int = 2600): Modifier {
     val transition = rememberInfiniteTransition(label = "liquid-glass-sweep")
     val progress by transition.animateFloat(
         initialValue = -0.65f,
@@ -129,7 +126,6 @@ fun Modifier.liquidGlassSweep(
     )
 
     return this.drawWithCache {
-        val radius = 28.dp.toPx()
         val startX = size.width * progress
         val reflection = Brush.linearGradient(
             colors = listOf(
@@ -147,9 +143,7 @@ fun Modifier.liquidGlassSweep(
             drawContent()
             drawRoundRect(
                 brush = reflection,
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                    if (shape == RoundedCornerShape(50.dp)) size.minDimension / 2f else radius
-                )
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.minDimension / 2f)
             )
         }
     }
