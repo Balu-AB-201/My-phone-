@@ -67,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.balu.abdialer.ui.liquidGlassSweep
 
 private data class DialKey(val number: String, val letters: String)
 
@@ -473,6 +474,7 @@ fun DialerScreen(modifier: Modifier = Modifier) {
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
                         )
                         .background(Color(0xFF35D07F).copy(alpha = 0.72f))
+                        .liquidGlassSweep()
                         .clickable(
                             indication = null,
                             interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
