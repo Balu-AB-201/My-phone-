@@ -1,13 +1,21 @@
 package com.balu.abdialer.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
@@ -16,9 +24,9 @@ import androidx.compose.ui.unit.dp
 /**
  * Original AB Dialer liquid-glass surface.
  *
- * The shared glass system uses translucent depth, directional light,
- * an ambient edge glow and a fine specular rim. Keeping this effect in
- * one modifier lets every dialer surface evolve together.
+ * The shared glass system combines translucent depth, directional light,
+ * an ambient edge glow and a fine specular rim. Keep the effect centralized
+ * so every dialer surface can evolve together without copied UI assets.
  */
 fun Modifier.liquidGlass(
     shape: RoundedCornerShape = RoundedCornerShape(28.dp),
@@ -99,6 +107,53 @@ fun Modifier.liquidGlass(
             )
         }
     }
+
+/**
+ * A restrained moving specular reflection for primary glass controls.
+ * Apply only to hero controls to keep the animation lightweight.
+ */
+@Composable
+fun Modifier.liquidGlassSweep(
+    shape: RoundedCornerShape = RoundedCornerShape(50.dp),
+    durationMillis: Int = 2600
+): Modifier {
+    val transition = rememberInfiniteTransition(label = "liquid-glass-sweep")
+    val progress by transition.animateFloat(
+        initialValue = -0.65f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = durationMillis, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "liquid-glass-sweep-progress"
+    )
+
+    return this.drawWithCache {
+        val radius = 28.dp.toPx()
+        val startX = size.width * progress
+        val reflection = Brush.linearGradient(
+            colors = listOf(
+                Color.Transparent,
+                Color.White.copy(alpha = 0.02f),
+                Color.White.copy(alpha = 0.20f),
+                Color.White.copy(alpha = 0.05f),
+                Color.Transparent
+            ),
+            start = Offset(startX, 0f),
+            end = Offset(startX + size.width * 0.48f, size.height),
+            tileMode = TileMode.Clamp
+        )
+        onDrawWithContent {
+            drawContent()
+            drawRoundRect(
+                brush = reflection,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                    if (shape == RoundedCornerShape(50.dp)) size.minDimension / 2f else radius
+                )
+            )
+        }
+    }
+}
 
 @Composable
 fun BoxScope.GlassContent() {
